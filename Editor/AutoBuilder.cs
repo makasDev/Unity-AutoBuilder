@@ -91,33 +91,43 @@ public class AutoBuilder
         AssetDatabase.SaveAssets();
     }
 
-    private static void RunPythonUploadScript(AutoBuilderSettings settings, string bundlePath)
+    private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath)
     {
-        System.Diagnostics.Process process = new System.Diagnostics.Process();
-        process.StartInfo.FileName = "python";
-
-        // Pass arguments dynamically from settings
-        string args = $"Scripts/upload_playstore.py " +
-                      $"--bundle \"{bundlePath}\" " +
-                      $"--code {settings.playVersionCode} " +
-                      $"--package \"{settings.packageName}\" " +
-                      $"--json \"{settings.serviceAccountJsonPath}\" " +
-                      $"--track \"{settings.track}\"";
-
-        process.StartInfo.Arguments = args;
-        process.StartInfo.UseShellExecute = false;
-        process.StartInfo.RedirectStandardOutput = true;
-        process.StartInfo.RedirectStandardError = true;
-        process.Start();
-
-        string output = process.StandardOutput.ReadToEnd();
-        string err = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        Debug.Log("[AutoBuilder] Upload Output: " + output);
-        if (!string.IsNullOrEmpty(err)) 
+        // Resolves the absolute path to the Python script inside the UPM package or Assets folder
+        string packagePath = Path.GetFullPath("Packages/com.makasdev.autobuilder/Scripts~/upload_playstore.py");
+        
+        // Fallback if installed manually under Assets/
+        if (!File.Exists(packagePath))
         {
-            Debug.LogError("[AutoBuilder] Upload Error: " + err);
+            packagePath = Path.GetFullPath("Assets/AutoBuilder/Scripts~/upload_playstore.py");
+        }
+    
+        if (!File.Exists(packagePath))
+        {
+            Debug.LogError($"[AutoBuilder] Could not locate upload_playstore.py at: {packagePath}");
+            return;
+        }
+    
+        string arguments = $"\"{packagePath}\" \"{buildPath}\" \"{settings.packageName}\" \"{settings.track}\" \"{settings.serviceAccountJsonPath}\"";
+    
+        System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "python",
+            Arguments = arguments,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+    
+        using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo))
+        {
+            string output = process.StandardOutput.ReadToEnd();
+            string errors = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+    
+            if (!string.IsNullOrEmpty(output)) Debug.Log($"[AutoBuilder Upload]: {output}");
+            if (!string.IsNullOrEmpty(errors)) Debug.LogError($"[AutoBuilder Upload Error]: {errors}");
         }
     }
 }
