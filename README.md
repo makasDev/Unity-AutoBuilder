@@ -54,22 +54,20 @@ https://github.com/makasDev/Unity-AutoBuilder.git
 
 ## Google Play API Setup (One-Time Setup)
 
-To allow the automated Python script to upload builds to your Google Play Console account, you need to set up a **Service Account**:
+To allow automated builds to upload to your Google Play Console account, you need to enable the developer API and create a Service Account:
 
-1. Log in to the [Google Play Console](https://play.google.com/console).
-2. Go to **Developer account** $\rightarrow$ **API access**.
-3. Click **Create new service account** and follow the link to the **Google Cloud Console**.
-4. In Google Cloud Console:
-* Click **+ CREATE SERVICE ACCOUNT**.
-* Enter a name (e.g., `play-store-builder`) and grant it the **Service Account User** or **Editor** role.
-* Under **Actions**, select **Manage keys** $\rightarrow$ **Add Key** $\rightarrow$ **Create new key**.
-* Choose **JSON** and download the key file.
-
-
-5. Save the downloaded `.json` file inside your Unity project root folder (e.g., `play_service_account.json`).
-6. Return to **Google Play Console** $\rightarrow$ **Users and permissions**:
-* Click **Invite new users** and paste the Service Account email address.
-* Under **App permissions**, assign your game and grant rights to **Release to testing tracks** and **Manage testing tracks**.
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) linked to your Google Play Console account.
+2. Navigate to **APIs & Services** $\rightarrow$ **Library** (or **Browse**) and search for **Google Play Android Developer API**, then click **Enable**.
+3. Go to **IAM & Admin** $\rightarrow$ **Service accounts** and click the **+ Create service account** button.
+4. Enter a name for the service account and click **Create and continue** (or **Create and close**).
+5. Locate your newly created account in the list, click the **three dots** under **Actions**, and select **Manage keys**.
+6. Click **Add key** $\rightarrow$ **Create new key**, ensure **JSON** is selected, and click **Create**.
+7. Download the `.json` file, rename it to `play_service_account.json`, and place it in the **root directory** of your Unity project.
+8. Head to [Google Play Console](https://play.google.com/console) $\rightarrow$ **Users and permissions**:
+   * Click **Invite new users** and paste the Service Account email address (e.g., `your-account@project.iam.gserviceaccount.com`).
+   * Under **App permissions**, assign your game.
+   * Grant rights to **Release to testing tracks** and **Manage testing tracks**.
+   * Click **Invite user**.
 
 
 
