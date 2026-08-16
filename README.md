@@ -122,4 +122,4 @@ Unity-AutoBuilder/
 
 ## License
 
-This project is licensed under the [Apache License 2.0](https://www.google.com/search?q=LICENSE).
+This project is licensed under the [Apache License 2.0](https://github.com/makasDev/Unity-AutoBuilder?tab=Apache-2.0-1-ov-file).
