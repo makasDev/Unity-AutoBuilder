@@ -96,28 +96,6 @@ To allow automated builds to upload to your Google Play Console account, you nee
 * Compile the `.aab` bundle to your designated output folder.
 * Execute the background Python uploader to deploy your build directly to Google Play.
 
-
-
----
-
-## Project Structure
-
-```text
-Unity-AutoBuilder/
-├── package.json
-├── README.md
-├── LICENSE
-├── .gitignore
-├── Editor/
-│   ├── AutoBuilder.cs
-│   ├── AutoBuilderSettings.cs
-│   └── AutoBuilderWindow.cs
-└── Scripts~/
-    ├── upload_playstore.py
-    └── requirements.txt
-
-```
-
 ---
 
 ## License
