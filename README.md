@@ -23,12 +23,15 @@ Before using this tool, ensure you have installed the following on your developm
 1. **Unity 2021.3+** (with Android Build Support installed).
 2. **Python 3.8+** installed and added to system `PATH`.
 3. Required Python dependencies. Open Terminal / Command Prompt and run:
+
    ```bash
    pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
 or with
+
    ```bash
-pip install -r "Scripts~\requirements.txt"
-```
+   pip install -r "Scripts~\requirements.txt"
+   ```
 
 ## Installation
 
