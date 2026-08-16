@@ -20,7 +20,7 @@ A modular Unity Editor tool that automates building Android App Bundles (`.aab`)
 
 Before using this tool, ensure you have installed the following on your development machine:
 
-1. **Unity 2021.3+** (with Android Build Support installed).
+1. **Unity 6** (with Android Build Support installed).
 2. **Python 3.8+** installed and added to system `PATH`.
 3. Required Python dependencies. Open Terminal / Command Prompt and run:
 
