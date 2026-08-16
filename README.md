@@ -42,8 +42,8 @@ pip install -r "Scripts~\requirements.txt"
 2. Go to **Window** $\rightarrow$ **Package Manager**.
 3. Click the **`+`** button in the top-left corner and select **Add package from git URL...**
 4. Paste the repository URL:
-```text
-[https://github.com/makasDev/Unity-AutoBuilder.git](https://github.com/makasDev/Unity-AutoBuilder.git)
+```bash
+https://github.com/makasDev/Unity-AutoBuilder.git
 
 ```
 
