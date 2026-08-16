@@ -4,7 +4,6 @@
   "displayName": "Unity AutoBuilder",
   "description": "One-click build, version increment, and automatic deployment tool to Google Play internal testing tracks.",
   "unity": "6000.0",
-  "unityRelease": "3.10f1",
   "author": {
     "name": "makasDev"
   }
