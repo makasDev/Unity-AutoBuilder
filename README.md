@@ -24,9 +24,10 @@ Before using this tool, ensure you have installed the following on your developm
 2. **Python 3.8+** installed and added to system `PATH`.
 3. Required Python dependencies. Open Terminal / Command Prompt and run:
 
-   ```bash
-   pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
+```bash
+   pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
+```
 or with
 
    ```bash
