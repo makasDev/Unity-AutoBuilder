@@ -108,7 +108,8 @@ public class AutoBuilder
             return;
         }
     
-        string arguments = $"\"{packagePath}\" \"{buildPath}\" \"{settings.packageName}\" \"{settings.track}\" \"{settings.serviceAccountJsonPath}\"";
+        // Pass arguments using the named flags expected by upload_playstore.py
+        string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\"";
     
         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
         {
