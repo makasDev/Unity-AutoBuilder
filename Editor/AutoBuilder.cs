@@ -1,10 +1,10 @@
+using System;
+using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using System.Linq;
-using System.IO;
-using System;
 
-public class AutoBuilder 
+public class AutoBuilder
 {
     [MenuItem("Build Tools/Build & Upload to Play Store")]
     public static void BuildAndUpload()
@@ -29,12 +29,13 @@ public class AutoBuilder
         PlayerSettings.Android.keyaliasName = settings.keyAlias;
         PlayerSettings.Android.keyaliasPass = settings.keyPassword;
 
-        // 3. Update Version Numbers
+        // 3. Update Version & Release Numbers
         UpdateBuildNumbers(settings);
 
         PlayerSettings.Android.bundleVersionCode = settings.playVersionCode;
 
-        Debug.Log($"[AutoBuilder] File Name: {settings.buildBaseName}{settings.fileBuildNumber}.aab | Version Code: {settings.playVersionCode}");
+        string releaseTitle = $"Release {settings.fileBuildNumber} TEST {settings.testPatchNumber}";
+        Debug.Log($"[AutoBuilder] Building '{releaseTitle}' | File Name: {settings.buildBaseName}{settings.fileBuildNumber}.aab | Version Code: {settings.playVersionCode}");
 
         // 4. Configure Output Path
         EditorUserBuildSettings.buildAppBundle = true;
@@ -48,7 +49,7 @@ public class AutoBuilder
         string fileName = $"{settings.buildBaseName}{settings.fileBuildNumber}.aab";
         string outputPath = Path.Combine(settings.buildOutputFolder, fileName);
 
-        // 5. Gather Scenes
+        // 5. Gather Enabled Scenes
         string[] scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
             .Select(s => s.path)
@@ -62,13 +63,13 @@ public class AutoBuilder
 
         // 6. Build AAB
         UnityEditor.Build.Reporting.BuildReport report = BuildPipeline.BuildPlayer(scenes, outputPath, BuildTarget.Android, BuildOptions.None);
-        
+
         if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             Debug.Log($"[AutoBuilder] AAB Build succeeded! Saved to: {outputPath}");
             
-            // UPDATE THIS LINE: Add settings.fileBuildNumber as the 3rd argument
-            RunPythonUploadScript(settings, outputPath, settings.fileBuildNumber); 
+            // Execute python uploader with formatted release name
+            RunPythonUploadScript(settings, outputPath, releaseTitle);
         }
         else
         {
@@ -82,35 +83,44 @@ public class AutoBuilder
 
         if (settings.lastBuildDate != todayStr)
         {
+            // New day: Increment release number, reset test patch counter
             settings.fileBuildNumber++;
+            settings.testPatchNumber = 1;
             settings.lastBuildDate = todayStr;
         }
+        else
+        {
+            // Same day: Increment test patch counter
+            settings.testPatchNumber++;
+        }
 
-        // Play version code increases with every single build attempt
+        // Play version code increases monotonically with every build attempt
         settings.playVersionCode++;
 
         EditorUtility.SetDirty(settings);
         AssetDatabase.SaveAssets();
     }
 
-    private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath, int fileBuildNumber)
+    private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath, string releaseTitle)
     {
+        // Resolve package path dynamically for UPM install
         string packagePath = Path.GetFullPath("Packages/com.makasdev.autobuilder/Scripts~/upload_playstore.py");
         
+        // Fallback for direct Assets installation
         if (!File.Exists(packagePath))
         {
             packagePath = Path.GetFullPath("Assets/AutoBuilder/Scripts~/upload_playstore.py");
         }
-    
+
         if (!File.Exists(packagePath))
         {
             Debug.LogError($"[AutoBuilder] Could not locate upload_playstore.py at: {packagePath}");
             return;
         }
-    
-        // Pass --build-number matching your current file build count (e.g. 63)
-        string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\" --build-number \"{fileBuildNumber}\"";
-    
+
+        // Pass arguments with named flags expected by upload_playstore.py
+        string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\" --release-name \"{releaseTitle}\"";
+
         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
         {
             FileName = "python",
@@ -120,13 +130,13 @@ public class AutoBuilder
             RedirectStandardError = true,
             CreateNoWindow = true
         };
-    
+
         using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo))
         {
             string output = process.StandardOutput.ReadToEnd();
             string errors = process.StandardError.ReadToEnd();
             process.WaitForExit();
-    
+
             if (!string.IsNullOrEmpty(output)) Debug.Log($"[AutoBuilder Upload]: {output}");
             if (!string.IsNullOrEmpty(errors)) Debug.LogError($"[AutoBuilder Upload Error]: {errors}");
         }
