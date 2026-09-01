@@ -1,62 +1,42 @@
 import argparse
-import datetime
 import re
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-def get_next_release_name(service, package_name, track_name):
+def get_release_name(service, package_name, track_name, build_number):
     """
-    Fetches past releases from the specified track to determine YY (Release) and ZZ (Test).
-    If the latest release was created today, ZZ increments. Otherwise, YY increments and ZZ resets to 1.
+    Looks up previous releases on Play Console.
+    If 'Release <build_number> TEST <ZZ>' exists, increments ZZ.
+    Otherwise, returns 'Release <build_number> TEST 1'.
     """
-    today_str = datetime.date.today().strftime("%Y%m%d")
-    
     try:
-        # Fetch current track info
         track_info = service.edits().tracks().get(
             packageName=package_name,
-            editId='latest', # Query latest edit context
+            editId='latest',
             track=track_name
         ).execute()
 
         releases = track_info.get('releases', [])
-        if not releases:
-            return "Release 1 TEST 1"
-
-        # Regex to find "Release YY TEST ZZ" pattern
-        pattern = re.compile(r'Release\s+(\d+)\s+TEST\s+(\d+)')
+        pattern = re.compile(rf'Release\s+{build_number}\s+TEST\s+(\d+)')
         
-        latest_yy = 0
-        latest_zz = 0
-
+        max_test_num = 0
         for r in releases:
             name = r.get('name', '')
             match = pattern.search(name)
             if match:
-                yy = int(match.group(1))
-                zz = int(match.group(2))
-                if yy > latest_yy or (yy == latest_yy and zz > latest_zz):
-                    latest_yy = yy
-                    latest_zz = zz
+                test_num = int(match.group(1))
+                if test_num > max_test_num:
+                    max_test_num = test_num
 
-        if latest_yy == 0:
-            return "Release 1 TEST 1"
-
-        # Check if last build was today using modified timestamp metadata if available,
-        # or simple daily increment logic. Here we bump patch ZZ, or bump YY if new day cycle.
-        # Defaults to incrementing ZZ per build, incrementing YY on fresh release cycles.
-        next_yy = latest_yy
-        next_zz = latest_zz + 1
-
-        return f"Release {next_yy} TEST {next_zz}"
+        next_test_num = max_test_num + 1
+        return f"Release {build_number} TEST {next_test_num}"
 
     except Exception:
-        # Fallback if track is empty or fresh app setup
-        return "Release 1 TEST 1"
+        return f"Release {build_number} TEST 1"
 
 
-def upload_aab(bundle_path, package_name, json_key_path, track_name, custom_release_name=None):
+def upload_aab(bundle_path, package_name, json_key_path, track_name, build_number):
     credentials = service_account.Credentials.from_service_account_file(
         json_key_path,
         scopes=['https://www.googleapis.com/auth/androidpublisher']
@@ -78,13 +58,10 @@ def upload_aab(bundle_path, package_name, json_key_path, track_name, custom_rele
 
     version_code = bundle_response['versionCode']
 
-    # 3. Determine the "Release name" field value
-    if not custom_release_name:
-        release_name = get_next_release_name(service, package_name, track_name)
-    else:
-        release_name = custom_release_name
+    # 3. Generate "Release XX TEST ZZ" string
+    release_name = get_release_name(service, package_name, track_name, build_number)
 
-    # 4. Update Track with Release Name (populates the Release Name field in Console)
+    # 4. Assign release details to target track
     release_body = {
         'name': release_name,
         'versionCodes': [str(version_code)],
@@ -105,7 +82,7 @@ def upload_aab(bundle_path, package_name, json_key_path, track_name, custom_rele
 
     # 5. Commit Edit
     service.edits().commit(packageName=package_name, editId=edit_id).execute()
-    print(f"[AutoBuilder] Successfully uploaded version {version_code} as '{release_name}' to {track_name} track!")
+    print(f"[AutoBuilder] Uploaded VersionCode {version_code} as '{release_name}' to '{track_name}' track!")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Upload AAB to Google Play Console")
@@ -113,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--package', required=True, help="Package Name")
     parser.add_argument('--json', required=True, help="Service Account JSON path")
     parser.add_argument('--track', default='internal', help="Target track")
-    parser.add_argument('--release-name', help="Optional explicit Release Name override")
+    parser.add_argument('--build-number', required=True, help="File Build Number (e.g. 63)")
 
     args = parser.parse_args()
-    upload_aab(args.bundle, args.package, args.json, args.track, args.release_name)
+    upload_aab(args.bundle, args.package, args.json, args.track, args.build_number)

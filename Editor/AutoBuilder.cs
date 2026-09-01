@@ -62,11 +62,13 @@ public class AutoBuilder
 
         // 6. Build AAB
         UnityEditor.Build.Reporting.BuildReport report = BuildPipeline.BuildPlayer(scenes, outputPath, BuildTarget.Android, BuildOptions.None);
-
+        
         if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             Debug.Log($"[AutoBuilder] AAB Build succeeded! Saved to: {outputPath}");
-            RunPythonUploadScript(settings, outputPath);
+            
+            // UPDATE THIS LINE: Add settings.fileBuildNumber as the 3rd argument
+            RunPythonUploadScript(settings, outputPath, settings.fileBuildNumber); 
         }
         else
         {
@@ -91,12 +93,10 @@ public class AutoBuilder
         AssetDatabase.SaveAssets();
     }
 
-    private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath)
+    private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath, int fileBuildNumber)
     {
-        // Resolves the absolute path to the Python script inside the UPM package or Assets folder
         string packagePath = Path.GetFullPath("Packages/com.makasdev.autobuilder/Scripts~/upload_playstore.py");
         
-        // Fallback if installed manually under Assets/
         if (!File.Exists(packagePath))
         {
             packagePath = Path.GetFullPath("Assets/AutoBuilder/Scripts~/upload_playstore.py");
@@ -108,8 +108,8 @@ public class AutoBuilder
             return;
         }
     
-        // Pass arguments using the named flags expected by upload_playstore.py
-        string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\"";
+        // Pass --build-number matching your current file build count (e.g. 63)
+        string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\" --build-number \"{fileBuildNumber}\"";
     
         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
         {
