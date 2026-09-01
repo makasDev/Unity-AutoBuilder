@@ -5,6 +5,7 @@
   "description": "One-click build, version increment, and automatic deployment tool to Google Play internal testing tracks.",
   "unity": "6000.0",
   "author": {
-    "name": "makasDev"
+    "name": "makasDev",
+    "url": "https://github.com/makasdev"
   }
 }
