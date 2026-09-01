@@ -19,7 +19,7 @@ public class AutoBuilderSettings : ScriptableObject
 
     [Header("Version Management")]
     public int fileBuildNumber = 0;
-    public int testPatchNumber = 1;
+    public int testPatchNumber = 0;
     public int playVersionCode = 0;
     public string lastBuildDate = "";
 }
