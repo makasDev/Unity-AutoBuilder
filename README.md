@@ -7,6 +7,7 @@ A modular Unity Editor tool that automates building Android App Bundles (`.aab`)
 ## Features
 
 * **One-Click Build & Upload:** Generates signed `.aab` builds and uploads them directly to Google Play Internal Testing (or other tracks) with a single click.
+* **Production Build Support:** Build and upload directly to the Production track with custom release notes, draft release creation, and guided review workflow.
 * **Smart Versioning:**
   * Auto-increments local build file numbers (e.g., `AppReleaseX.aab`) on new calendar days while overwriting same-day iteration builds.
   * Continuously increments Google Play `bundleVersionCode` on every build execution to comply with API release requirements.
@@ -67,6 +68,7 @@ To allow automated builds to upload to your Google Play Console account, you nee
    * Click **Invite new users** and paste the Service Account email address (e.g., `your-account@project.iam.gserviceaccount.com`).
    * Under **App permissions**, assign your game.
    * Grant rights to **Release to testing tracks** and **Manage testing tracks**.
+   * **For production builds:** Also grant **Release to production** and **Manage production releases**.
    * Click **Invite user**.
 
 
@@ -89,12 +91,28 @@ To allow automated builds to upload to your Google Play Console account, you nee
 
 ## Usage
 
+### Test Builds (Internal Testing / Other Tracks)
+
 1. Open your project in Unity.
 2. Go to **Build Tools** $\rightarrow$ **Build & Upload to Play Store**.
 3. AutoBuilder will:
 * Configure keystore credentials and update build numbers.
 * Compile the `.aab` bundle to your designated output folder.
 * Execute the background Python uploader to deploy your build directly to Google Play.
+
+### Production Builds
+
+1. Open your project in Unity.
+2. Go to **Build Tools** $\rightarrow$ **Build & Upload to Production**.
+3. A dialog will prompt for **Release Notes** (pre-filled with your last used notes).
+4. Click **OK** to proceed or **Cancel** to abort.
+5. AutoBuilder will:
+* Configure keystore credentials and update build numbers (shared counter with test builds).
+* Build the signed `.aab` with release name format: `Release {buildNumber}`.
+* Upload to the **Production** track as a **DRAFT** release.
+6. **Important:** A reminder dialog will appear. You **must** go to Google Play Console $\rightarrow$ **Testing & releases** $\rightarrow$ **Production** $\rightarrow$ **Edit release** $\rightarrow$ **Review and rollout** to publish the build to users.
+
+> **Note:** The service account must have **Release to production** and **Manage production releases** permissions in Google Play Console for this to work.
 
 ---
 

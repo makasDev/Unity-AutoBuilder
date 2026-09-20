@@ -3,7 +3,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-def upload_aab(bundle_path, package_name, json_key_path, track_name, release_name):
+def upload_aab(bundle_path, package_name, json_key_path, track_name, release_name, status='completed'):
     credentials = service_account.Credentials.from_service_account_file(
         json_key_path,
         scopes=['https://www.googleapis.com/auth/androidpublisher']
@@ -29,7 +29,7 @@ def upload_aab(bundle_path, package_name, json_key_path, track_name, release_nam
     release_body = {
         'name': release_name,
         'versionCodes': [str(version_code)],
-        'status': 'completed'
+        'status': status
     }
 
     track_body = {
@@ -46,7 +46,7 @@ def upload_aab(bundle_path, package_name, json_key_path, track_name, release_nam
 
     # 4. Commit Edit
     service.edits().commit(packageName=package_name, editId=edit_id).execute()
-    print(f"[AutoBuilder] Successfully uploaded VersionCode {version_code} as '{release_name}' to '{track_name}' track!")
+    print(f"[AutoBuilder] Successfully uploaded VersionCode {version_code} as '{release_name}' to '{track_name}' track with status '{status}'!")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Upload AAB to Google Play Console")
@@ -55,6 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('--json', required=True, help="Service Account JSON path")
     parser.add_argument('--track', default='internal', help="Target track")
     parser.add_argument('--release-name', required=True, help="Release Title string (e.g. Release 63 TEST 1)")
+    parser.add_argument('--status', default='completed', help="Release status: completed or draft")
 
     args = parser.parse_args()
-    upload_aab(args.bundle, args.package, args.json, args.track, args.release_name)
+    upload_aab(args.bundle, args.package, args.json, args.track, args.release_name, args.status)
