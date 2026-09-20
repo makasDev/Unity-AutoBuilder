@@ -22,4 +22,7 @@ public class AutoBuilderSettings : ScriptableObject
     public int testPatchNumber = 0;
     public int playVersionCode = 0;
     public string lastBuildDate = "";
+
+    [Header("Production Build")]
+    public string productionReleaseNotes = "";
 }

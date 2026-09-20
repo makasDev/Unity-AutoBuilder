@@ -56,6 +56,16 @@ public class AutoBuilderWindow : EditorWindow
 
         EditorGUILayout.Space(10);
 
+        // Production Build Info Section
+        GUILayout.Label("Production Build Info", EditorStyles.boldLabel);
+        EditorGUILayout.BeginVertical("box");
+        EditorGUILayout.LabelField("Next Production Release", $"Release {settings.fileBuildNumber}", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Release Notes (persisted)", string.IsNullOrEmpty(settings.productionReleaseNotes) ? "(none)" : settings.productionReleaseNotes, EditorStyles.wordWrappedLabel);
+        EditorGUILayout.HelpBox("Production builds use the same build number counter as test builds. Release notes are persisted for convenience.", MessageType.Info);
+        EditorGUILayout.EndVertical();
+
+        EditorGUILayout.Space(10);
+
         SerializedObject serializedSettings = new SerializedObject(settings);
         SerializedProperty prop = serializedSettings.GetIterator();
         prop.NextVisible(true);
