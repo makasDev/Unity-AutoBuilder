@@ -146,6 +146,99 @@ public class AutoBuilder
         AssetDatabase.SaveAssets();
     }
 
+    private static string EnsurePythonEnvironment()
+    {
+        // Project root is one level up from Assets/
+        string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        string venvDir = Path.Combine(projectRoot, ".autobuilder_venv");
+        string venvPython = Application.platform == RuntimePlatform.WindowsEditor
+            ? Path.Combine(venvDir, "Scripts", "python.exe")
+            : Path.Combine(venvDir, "bin", "python");
+        string markerFile = Path.Combine(venvDir, ".installed");
+
+        // Resolve requirements.txt next to the uploader script
+        string requirementsPath = Path.GetFullPath("Packages/com.makasdev.autobuilder/Scripts~/requirements.txt");
+        if (!File.Exists(requirementsPath))
+        {
+            requirementsPath = Path.GetFullPath("Assets/AutoBuilder/Scripts~/requirements.txt");
+        }
+
+        // Create the venv if it doesn't exist yet
+        if (!Directory.Exists(venvDir))
+        {
+            Debug.Log($"[AutoBuilder] Creating Python virtual environment at: {venvDir}");
+            string systemPython = Application.platform == RuntimePlatform.LinuxEditor ? "python3" : "python";
+            var createInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = systemPython,
+                Arguments = $"-m venv \"{venvDir}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+#if UNITY_EDITOR_WIN
+                CreateNoWindow = true,
+#endif
+            };
+            using (var process = System.Diagnostics.Process.Start(createInfo))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string errors = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    Debug.LogError($"[AutoBuilder] Failed to create venv: {errors}");
+                    return null;
+                }
+                if (!string.IsNullOrEmpty(output)) Debug.Log($"[AutoBuilder]: {output}");
+            }
+        }
+
+        // Install dependencies once (marker file avoids reinstalling every build)
+        if (!File.Exists(markerFile))
+        {
+            if (!File.Exists(requirementsPath))
+            {
+                Debug.LogError($"[AutoBuilder] Could not locate requirements.txt at: {requirementsPath}");
+                return null;
+            }
+
+            Debug.Log("[AutoBuilder] Installing Python dependencies into venv...");
+            var installInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = venvPython,
+                Arguments = $"-m pip install -r \"{requirementsPath}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+#if UNITY_EDITOR_WIN
+                CreateNoWindow = true,
+#endif
+            };
+            using (var process = System.Diagnostics.Process.Start(installInfo))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string errors = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    Debug.LogError($"[AutoBuilder] Failed to install dependencies: {errors}");
+                    return null;
+                }
+                if (!string.IsNullOrEmpty(output)) Debug.Log($"[AutoBuilder]: {output}");
+            }
+
+            try
+            {
+                File.WriteAllText(markerFile, DateTime.UtcNow.ToString("o"));
+            }
+            catch { /* best-effort marker */ }
+        }
+
+        return venvPython;
+    }
+
     private static void RunPythonUploadScript(AutoBuilderSettings settings, string buildPath, string releaseTitle)
     {
         // Resolve package path dynamically for UPM install
@@ -166,10 +259,12 @@ public class AutoBuilder
         // Pass arguments with named flags expected by upload_playstore.py
         string arguments = $"\"{packagePath}\" --bundle \"{buildPath}\" --package \"{settings.packageName}\" --json \"{settings.serviceAccountJsonPath}\" --track \"{settings.track}\" --release-name \"{releaseTitle}\"";
 
+        string venvPython = EnsurePythonEnvironment();
+        if (venvPython == null) return;
+
         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
         {
-            // Linux ships `python3`; Windows ships `python`
-            FileName = Application.platform == RuntimePlatform.LinuxEditor ? "python3" : "python",
+            FileName = venvPython,
             Arguments = arguments,
             UseShellExecute = false,
             RedirectStandardOutput = true,
