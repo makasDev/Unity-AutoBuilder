@@ -11,15 +11,73 @@ public class AutoBuilder
     {
         AutoBuilderSettings settings = AutoBuilderWindow.GetOrCreateSettings();
 
-        // 1. Validation Check / First Run Setup Prompt
+        if (!EnsurePasswords(settings)) return;
+
+        ConfigureKeystore(settings);
+        UpdateBuildNumbers(settings);
+        PlayerSettings.Android.bundleVersionCode = settings.playVersionCode;
+
+        string releaseTitle = $"Release {settings.fileBuildNumber} TEST {settings.testPatchNumber}";
+        Debug.Log($"[AutoBuilder] Building '{releaseTitle}' | File Name: {settings.buildBaseName}{settings.fileBuildNumber}.aab | Version Code: {settings.playVersionCode}");
+
+        string outputPath = BuildAAB(settings);
+        if (outputPath != null)
+        {
+            Debug.Log($"[AutoBuilder] AAB Build succeeded! Saved to: {outputPath}");
+            RunPythonUploadScript(settings, outputPath, releaseTitle);
+        }
+    }
+
+    [MenuItem("Build Tools/Build Only")]
+    public static void BuildOnly()
+    {
+        AutoBuilderSettings settings = AutoBuilderWindow.GetOrCreateSettings();
+
+        if (!EnsurePasswords(settings)) return;
+
+        ConfigureKeystore(settings);
+        UpdateBuildNumbers(settings);
+        PlayerSettings.Android.bundleVersionCode = settings.playVersionCode;
+
+        string releaseTitle = $"Release {settings.fileBuildNumber} TEST {settings.testPatchNumber}";
+        Debug.Log($"[AutoBuilder] Building '{releaseTitle}' | File Name: {settings.buildBaseName}{settings.fileBuildNumber}.aab | Version Code: {settings.playVersionCode}");
+
+        string outputPath = BuildAAB(settings);
+        if (outputPath != null)
+        {
+            Debug.Log($"[AutoBuilder] Build succeeded! Saved to: {outputPath}");
+        }
+    }
+
+    [MenuItem("Build Tools/Upload Only")]
+    public static void UploadOnly()
+    {
+        AutoBuilderSettings settings = AutoBuilderWindow.GetOrCreateSettings();
+
+        string buildPath = Path.Combine(settings.buildOutputFolder, $"{settings.buildBaseName}{settings.fileBuildNumber}.aab");
+        if (!File.Exists(buildPath))
+        {
+            Debug.LogError($"[AutoBuilder] No AAB found at: {buildPath}. Build first or check Build Output Directory.");
+            return;
+        }
+
+        string releaseTitle = $"Release {settings.fileBuildNumber} TEST {settings.testPatchNumber}";
+        RunPythonUploadScript(settings, buildPath, releaseTitle);
+    }
+
+    private static bool EnsurePasswords(AutoBuilderSettings settings)
+    {
         if (string.IsNullOrEmpty(settings.keystorePassword) || string.IsNullOrEmpty(settings.keyPassword))
         {
             Debug.LogWarning("[AutoBuilder] First-time run or missing passwords! Opening setup window...");
             AutoBuilderWindow.ShowWindow();
-            return;
+            return false;
         }
+        return true;
+    }
 
-        // 2. Configure Keystore Details
+    private static void ConfigureKeystore(AutoBuilderSettings settings)
+    {
         PlayerSettings.Android.useCustomKeystore = true;
         if (!string.IsNullOrEmpty(settings.keystorePath))
         {
@@ -28,16 +86,10 @@ public class AutoBuilder
         PlayerSettings.Android.keystorePass = settings.keystorePassword;
         PlayerSettings.Android.keyaliasName = settings.keyAlias;
         PlayerSettings.Android.keyaliasPass = settings.keyPassword;
+    }
 
-        // 3. Update Version & Release Numbers
-        UpdateBuildNumbers(settings);
-
-        PlayerSettings.Android.bundleVersionCode = settings.playVersionCode;
-
-        string releaseTitle = $"Release {settings.fileBuildNumber} TEST {settings.testPatchNumber}";
-        Debug.Log($"[AutoBuilder] Building '{releaseTitle}' | File Name: {settings.buildBaseName}{settings.fileBuildNumber}.aab | Version Code: {settings.playVersionCode}");
-
-        // 4. Configure Output Path
+    private static string BuildAAB(AutoBuilderSettings settings)
+    {
         EditorUserBuildSettings.buildAppBundle = true;
         EditorUserBuildSettings.development = false;
 
@@ -49,7 +101,6 @@ public class AutoBuilder
         string fileName = $"{settings.buildBaseName}{settings.fileBuildNumber}.aab";
         string outputPath = Path.Combine(settings.buildOutputFolder, fileName);
 
-        // 5. Gather Enabled Scenes
         string[] scenes = EditorBuildSettings.scenes
             .Where(s => s.enabled)
             .Select(s => s.path)
@@ -58,23 +109,17 @@ public class AutoBuilder
         if (scenes.Length == 0)
         {
             Debug.LogError("[AutoBuilder] No scenes are enabled in File -> Build Settings!");
-            return;
+            return null;
         }
 
-        // 6. Build AAB
         UnityEditor.Build.Reporting.BuildReport report = BuildPipeline.BuildPlayer(scenes, outputPath, BuildTarget.Android, BuildOptions.None);
 
         if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
-            Debug.Log($"[AutoBuilder] AAB Build succeeded! Saved to: {outputPath}");
-            
-            // Execute python uploader with formatted release name
-            RunPythonUploadScript(settings, outputPath, releaseTitle);
+            return outputPath;
         }
-        else
-        {
-            Debug.LogError($"[AutoBuilder] Build failed with result: {report.summary.result}");
-        }
+        Debug.LogError($"[AutoBuilder] Build failed with result: {report.summary.result}");
+        return null;
     }
 
     private static void UpdateBuildNumbers(AutoBuilderSettings settings)
@@ -105,7 +150,7 @@ public class AutoBuilder
     {
         // Resolve package path dynamically for UPM install
         string packagePath = Path.GetFullPath("Packages/com.makasdev.autobuilder/Scripts~/upload_playstore.py");
-        
+
         // Fallback for direct Assets installation
         if (!File.Exists(packagePath))
         {
@@ -123,13 +168,17 @@ public class AutoBuilder
 
         System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "python",
+            // Linux ships `python3`; Windows ships `python`
+            FileName = Application.platform == RuntimePlatform.LinuxEditor ? "python3" : "python",
             Arguments = arguments,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            CreateNoWindow = true
         };
+
+#if UNITY_EDITOR_WIN
+        startInfo.CreateNoWindow = true;
+#endif
 
         using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo))
         {
