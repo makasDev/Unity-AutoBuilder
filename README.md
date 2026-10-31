@@ -28,6 +28,8 @@ Before using this tool, ensure you have installed the following on your developm
 pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
 ```
 
+On Linux/macOS, use `pip3` (and `python3`) instead of `pip`/`python`.
+
 or with
 
 ```bash
